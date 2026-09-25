@@ -1,0 +1,35 @@
+[project]
+name = "image-processing-service"
+version = "1.0.0"
+description = "Resize and convert public image URLs"
+requires-python = ">=3.14,<3.15"
+dependencies = ["fastapi", "uvicorn", "aiohttp", "pillow"]
+
+[dependency-groups]
+dev = ["pytest", "pytest-asyncio", "pytest-cov", "httpx2", "ruff", "mypy"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "--cov=image_service --cov-report=term-missing --cov-report=html --cov-fail-under=85"
+
+[tool.coverage.run]
+omit = ["image_service/__main__.py"]
+patch = ["subprocess"]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S104", "S603", "S607"]
+"scripts/**" = ["S101", "S310"]
+
+[tool.mypy]
+python_version = "3.14"
+check_untyped_defs = true
+disallow_untyped_defs = true
+files = ["image_service"]
