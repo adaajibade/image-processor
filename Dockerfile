@@ -1,4 +1,4 @@
-ARG PYTHON_IMAGE=python:3.14.4-slim-bookworm
+ARG PYTHON_IMAGE=python:3.14.7-slim-bookworm
 FROM ${PYTHON_IMAGE} AS base
 RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
     && rm -rf /var/lib/apt/lists/*
@@ -25,6 +25,4 @@ COPY --from=dependencies /opt/venv /opt/venv
 COPY --from=check --chown=app:app /app/image_service ./image_service
 USER app
 EXPOSE 3000
-HEALTHCHECK --interval=15s --timeout=3s --start-period=10s --retries=3 \
-  CMD python -c "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:'+os.environ['PORT']+'/health/ready', timeout=2)"
 CMD ["python", "-m", "image_service"]
