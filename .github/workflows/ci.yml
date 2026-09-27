@@ -1,0 +1,38 @@
+name: CI
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version-file: .python-version
+      - run: python -m pip install --upgrade uv==0.12.19
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy
+      - run: uv run pytest
+      - name: Check dependency exports
+        run: |
+          uv export --locked --no-dev --no-emit-project -o requirements.txt
+          uv export --locked --no-emit-project -o requirements-dev.txt
+          git diff --exit-code -- requirements.txt requirements-dev.txt
+      - name: Audit dependencies
+        run: uvx pip-audit==2.10.1 --strict --disable-pip -r requirements.txt
+      - run: docker build -t image-processing-service:ci .
+      - name: Container smoke test
+        run: |
+          docker run -d --name image-api --read-only --tmpfs /tmp:size=64m,mode=1777,noexec,nosuid,nodev --cap-drop ALL --memory 512m -p 3000:3000 image-processing-service:ci
+          trap 'docker logs image-api; docker rm -f image-api' EXIT
+          for attempt in $(seq 1 20); do
+            curl --fail --silent http://localhost:3000/health/ready && break
+            sleep 1
+          done
+          curl --fail --silent http://localhost:3000/openapi.json > /dev/null
+          status=$(curl --silent -o /tmp/error.json -w '%{http_code}' 'http://localhost:3000/process?url=http://127.0.0.1/image.png')
+          test "$status" = 403
